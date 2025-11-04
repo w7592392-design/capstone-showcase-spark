@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shield, Plus, Search, LogOut, Download, Upload, Key } from 'lucide-react';
+import { Shield, Plus, Search, LogOut, Download, Upload, Key, Settings } from 'lucide-react';
 import { useVault } from '@/contexts/VaultContext';
 import { CredentialList } from './CredentialList';
 import { AddCredentialDialog } from './AddCredentialDialog';
 import { PasswordGeneratorDialog } from './PasswordGeneratorDialog';
+import { ChangePasswordDialog } from './ChangePasswordDialog';
 import { CategoryFilter } from './CategoryFilter';
 import { toast } from 'sonner';
 import { exportVaultData, importVaultData } from '@/lib/storage';
@@ -24,6 +25,7 @@ export const VaultDashboard = () => {
   const { lock, credentials, searchQuery, setSearchQuery, categoryFilter } = useVault();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showGeneratorDialog, setShowGeneratorDialog] = useState(false);
+  const [showChangePasswordDialog, setShowChangePasswordDialog] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   const handleExport = () => {
@@ -95,6 +97,10 @@ export const VaultDashboard = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowChangePasswordDialog(true)}>
+                <Settings className="w-4 h-4 mr-2" />
+                Change Password
+              </Button>
               <Button variant="outline" size="sm" onClick={handleExport}>
                 <Download className="w-4 h-4 mr-2" />
                 Export
@@ -149,6 +155,7 @@ export const VaultDashboard = () => {
       {/* Dialogs */}
       <AddCredentialDialog open={showAddDialog} onOpenChange={setShowAddDialog} />
       <PasswordGeneratorDialog open={showGeneratorDialog} onOpenChange={setShowGeneratorDialog} />
+      <ChangePasswordDialog open={showChangePasswordDialog} onOpenChange={setShowChangePasswordDialog} />
       
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>

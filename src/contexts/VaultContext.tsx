@@ -5,8 +5,9 @@ import {
   getEncryptedData,
   updateLastActivity,
   getLastActivity,
+  saveMasterPasswordHash,
 } from '@/lib/storage';
-import { encryptData, decryptData } from '@/lib/encryption';
+import { encryptData, decryptData, hashPassword } from '@/lib/encryption';
 
 interface VaultContextType {
   isLocked: boolean;
@@ -17,6 +18,7 @@ interface VaultContextType {
   addCredential: (credential: Omit<Credential, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateCredential: (id: string, credential: Partial<Credential>) => void;
   deleteCredential: (id: string) => void;
+  changeMasterPassword: (currentPassword: string, newPassword: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   categoryFilter: string;
@@ -104,6 +106,24 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     updateLastActivity();
   }, [credentials, masterPassword, saveCredentials]);
 
+  const changeMasterPassword = useCallback((currentPassword: string, newPassword: string) => {
+    // Verify current password matches
+    if (hashPassword(currentPassword) !== hashPassword(masterPassword)) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Re-encrypt all credentials with new password
+    saveCredentials(credentials, newPassword);
+    
+    // Update master password hash
+    const newHash = hashPassword(newPassword);
+    saveMasterPasswordHash(newHash);
+    
+    // Update state
+    setMasterPassword(newPassword);
+    updateLastActivity();
+  }, [credentials, masterPassword, saveCredentials]);
+
   // Auto-lock functionality
   useEffect(() => {
     if (isLocked) return;
@@ -146,6 +166,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addCredential,
         updateCredential,
         deleteCredential,
+        changeMasterPassword,
         searchQuery,
         setSearchQuery,
         categoryFilter,
