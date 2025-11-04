@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Eye, EyeOff, Lock } from 'lucide-react';
-import { hashPassword } from '@/lib/encryption';
+import { verifyPassword } from '@/lib/encryption';
 import { getMasterPasswordHash } from '@/lib/storage';
 import { toast } from 'sonner';
 
@@ -21,11 +21,10 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const hash = hashPassword(password);
     const storedHash = getMasterPasswordHash();
 
     setTimeout(() => {
-      if (hash === storedHash) {
+      if (storedHash && verifyPassword(password, storedHash)) {
         toast.success('Welcome back!');
         onUnlock(password);
       } else {

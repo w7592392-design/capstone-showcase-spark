@@ -1,0 +1,2 @@
+[functions.vault-assistant]
+verify_jwt = false

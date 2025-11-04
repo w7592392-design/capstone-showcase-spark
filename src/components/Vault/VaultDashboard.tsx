@@ -7,6 +7,7 @@ import { CredentialList } from './CredentialList';
 import { AddCredentialDialog } from './AddCredentialDialog';
 import { PasswordGeneratorDialog } from './PasswordGeneratorDialog';
 import { ChangePasswordDialog } from './ChangePasswordDialog';
+import { AIAssistant } from './AIAssistant';
 import { CategoryFilter } from './CategoryFilter';
 import { toast } from 'sonner';
 import { exportVaultData, importVaultData } from '@/lib/storage';
@@ -97,6 +98,7 @@ export const VaultDashboard = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <AIAssistant />
               <Button variant="outline" size="sm" onClick={() => setShowChangePasswordDialog(true)}>
                 <Settings className="w-4 h-4 mr-2" />
                 Change Password

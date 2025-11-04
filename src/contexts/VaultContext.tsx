@@ -7,7 +7,7 @@ import {
   getLastActivity,
   saveMasterPasswordHash,
 } from '@/lib/storage';
-import { encryptData, decryptData, hashPassword } from '@/lib/encryption';
+import { encryptData, decryptData, hashPassword, verifyPassword } from '@/lib/encryption';
 
 interface VaultContextType {
   isLocked: boolean;
@@ -108,7 +108,7 @@ export const VaultProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const changeMasterPassword = useCallback((currentPassword: string, newPassword: string) => {
     // Verify current password matches
-    if (hashPassword(currentPassword) !== hashPassword(masterPassword)) {
+    if (currentPassword !== masterPassword) {
       throw new Error('Current password is incorrect');
     }
 

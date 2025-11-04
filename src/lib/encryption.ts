@@ -1,20 +1,69 @@
 import CryptoJS from 'crypto-js';
 
+// Generate a cryptographic salt
+const generateSalt = (): string => {
+  return CryptoJS.lib.WordArray.random(128/8).toString();
+};
+
+// Derive a key from password using PBKDF2 with 100,000 iterations
+const deriveKey = (password: string, salt: string): string => {
+  return CryptoJS.PBKDF2(password, salt, {
+    keySize: 256/32,
+    iterations: 100000,
+    hasher: CryptoJS.algo.SHA512
+  }).toString();
+};
+
 export const encryptData = (data: string, masterPassword: string): string => {
-  return CryptoJS.AES.encrypt(data, masterPassword).toString();
+  const salt = generateSalt();
+  const key = deriveKey(masterPassword, salt);
+  const encrypted = CryptoJS.AES.encrypt(data, key).toString();
+  // Prepend salt to encrypted data
+  return salt + ':' + encrypted;
 };
 
 export const decryptData = (encryptedData: string, masterPassword: string): string => {
   try {
-    const bytes = CryptoJS.AES.decrypt(encryptedData, masterPassword);
-    return bytes.toString(CryptoJS.enc.Utf8);
+    const parts = encryptedData.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid encrypted data format');
+    }
+    const [salt, encrypted] = parts;
+    const key = deriveKey(masterPassword, salt);
+    const bytes = CryptoJS.AES.decrypt(encrypted, key);
+    const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+    if (!decrypted) {
+      throw new Error('Decryption failed');
+    }
+    return decrypted;
   } catch (error) {
     throw new Error('Decryption failed. Invalid master password.');
   }
 };
 
 export const hashPassword = (password: string): string => {
-  return CryptoJS.SHA256(password).toString();
+  const salt = CryptoJS.lib.WordArray.random(128/8).toString();
+  return CryptoJS.PBKDF2(password, salt, {
+    keySize: 256/32,
+    iterations: 100000,
+    hasher: CryptoJS.algo.SHA512
+  }).toString() + ':' + salt;
+};
+
+export const verifyPassword = (password: string, hash: string): boolean => {
+  try {
+    const parts = hash.split(':');
+    if (parts.length !== 2) return false;
+    const [storedHash, salt] = parts;
+    const testHash = CryptoJS.PBKDF2(password, salt, {
+      keySize: 256/32,
+      iterations: 100000,
+      hasher: CryptoJS.algo.SHA512
+    }).toString();
+    return storedHash === testHash;
+  } catch {
+    return false;
+  }
 };
 
 export const generatePassword = (length: number = 16, options: {
