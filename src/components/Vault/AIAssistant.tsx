@@ -1,65 +1,46 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { Bot, Send, Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Bot, Shield, Key, Lock, AlertTriangle } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
+const FAQ_OPTIONS = [
+  { id: 'strong', label: 'How to create a strong password?', icon: Shield },
+  { id: 'reuse', label: 'Why not reuse passwords?', icon: Key },
+  { id: 'change', label: 'How often to change passwords?', icon: Lock },
+  { id: 'breach', label: 'What if my password is breached?', icon: AlertTriangle },
+];
+
+const FAQ_ANSWERS: Record<string, string> = {
+  strong: 'A strong password should be at least 12 characters long, include uppercase and lowercase letters, numbers, and special characters. Avoid common words or personal information. Use our password generator for secure passwords!',
+  reuse: 'Reusing passwords is dangerous because if one account is compromised, hackers can access all your other accounts. Always use unique passwords for each service.',
+  change: 'Change passwords immediately if you suspect a breach. For critical accounts, consider changing them every 3-6 months. Use your vault to keep track of all passwords securely.',
+  breach: 'If your password is breached: 1) Change it immediately, 2) Enable two-factor authentication, 3) Check if other accounts use the same password and update them, 4) Monitor your accounts for suspicious activity.',
+};
+
 export const AIAssistant = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: 'Hi! I\'m your vault assistant. I can help you with password security tips, explain features, and answer questions about keeping your credentials safe.'
+      content: 'Hi! I\'m your vault assistant. Choose a topic below to learn about password security:'
     }
   ]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [showOptions, setShowOptions] = useState(true);
 
-  const sendMessage = async () => {
-    if (!input.trim()) return;
+  const handleOptionClick = (optionId: string) => {
+    const option = FAQ_OPTIONS.find(o => o.id === optionId);
+    if (!option) return;
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/vault-assistant`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-          },
-          body: JSON.stringify({ message: input }),
-        }
-      );
-
-      if (!response.ok) throw new Error('Failed to get response');
-
-      const data = await response.json();
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: data.reply
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to get AI response. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    const userMessage: Message = { role: 'user', content: option.label };
+    const assistantMessage: Message = { role: 'assistant', content: FAQ_ANSWERS[optionId] };
+    
+    setMessages(prev => [...prev, userMessage, assistantMessage]);
+    setShowOptions(true);
   };
 
   return (
@@ -96,28 +77,27 @@ export const AIAssistant = () => {
                   </div>
                 </div>
               ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg px-4 py-2 flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Thinking...</span>
-                  </div>
-                </div>
-              )}
             </div>
           </ScrollArea>
-          <div className="flex gap-2 mt-4">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask about password security..."
-              disabled={isLoading}
-            />
-            <Button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
+          
+          {showOptions && (
+            <div className="grid grid-cols-1 gap-2 mt-4">
+              {FAQ_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                return (
+                  <Button
+                    key={option.id}
+                    variant="outline"
+                    className="justify-start h-auto py-3 px-4"
+                    onClick={() => handleOptionClick(option.id)}
+                  >
+                    <Icon className="h-4 w-4 mr-2 flex-shrink-0" />
+                    <span className="text-left text-sm">{option.label}</span>
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </SheetContent>
     </Sheet>
