@@ -7,6 +7,7 @@ import { Shield, Eye, EyeOff, Lock } from 'lucide-react';
 import { verifyPassword } from '@/lib/encryption';
 import { getMasterPasswordHash } from '@/lib/storage';
 import { toast } from 'sonner';
+import { ForgotPasswordDialog } from './ForgotPasswordDialog';
 
 interface LoginScreenProps {
   onUnlock: (password: string) => void;
@@ -16,6 +17,7 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotDialog, setShowForgotDialog] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +78,15 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
             <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
               {isLoading ? 'Unlocking...' : 'Unlock Vault'}
             </Button>
+
+            <Button 
+              type="button" 
+              variant="link" 
+              className="w-full text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setShowForgotDialog(true)}
+            >
+              Forgot your master password?
+            </Button>
           </form>
 
           <div className="mt-6 p-3 bg-accent/10 border border-accent/20 rounded-lg">
@@ -85,6 +96,12 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
           </div>
         </CardContent>
       </Card>
+
+      <ForgotPasswordDialog
+        open={showForgotDialog}
+        onOpenChange={setShowForgotDialog}
+        onReset={() => window.location.reload()}
+      />
     </div>
   );
 };
