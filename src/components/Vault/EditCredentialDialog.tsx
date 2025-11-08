@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -20,8 +21,9 @@ import {
 import { useVault } from '@/contexts/VaultContext';
 import { Credential } from '@/lib/storage';
 import { toast } from 'sonner';
-import { Key } from 'lucide-react';
-import { generatePassword } from '@/lib/encryption';
+import { Key, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { generatePassword, calculatePasswordStrength } from '@/lib/encryption';
+import { checkPasswordBreach, PasswordSecurityStatus } from '@/lib/passwordSecurity';
 
 interface EditCredentialDialogProps {
   credential: Credential;
@@ -39,6 +41,13 @@ export const EditCredentialDialog = ({ credential, open, onOpenChange }: EditCre
     category: credential.category,
     notes: credential.notes || '',
   });
+  const [breachStatus, setBreachStatus] = useState<PasswordSecurityStatus>({
+    breachCount: null,
+    isBreached: false,
+    isChecking: false,
+  });
+
+  const strength = formData.password ? calculatePasswordStrength(formData.password) : null;
 
   useEffect(() => {
     setFormData({
@@ -50,6 +59,16 @@ export const EditCredentialDialog = ({ credential, open, onOpenChange }: EditCre
       notes: credential.notes || '',
     });
   }, [credential]);
+
+  useEffect(() => {
+    if (formData.password.length > 0) {
+      setBreachStatus({ ...breachStatus, isChecking: true });
+      const timer = setTimeout(() => {
+        checkPasswordBreach(formData.password).then(setBreachStatus);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.password]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,6 +157,45 @@ export const EditCredentialDialog = ({ credential, open, onOpenChange }: EditCre
                 <Key className="w-4 h-4" />
               </Button>
             </div>
+
+            {/* Password Strength Indicator */}
+            {strength && (
+              <div className="space-y-2">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4].map((level) => (
+                    <div
+                      key={level}
+                      className={`h-1.5 flex-1 rounded-full transition-colors ${
+                        level <= strength.score ? strength.color : 'bg-muted'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Strength: <span className="font-medium">{strength.label}</span>
+                </p>
+              </div>
+            )}
+
+            {/* Breach Warning */}
+            {breachStatus.isBreached && (
+              <Alert variant="destructive">
+                <ShieldAlert className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  This password has been found in {breachStatus.breachCount?.toLocaleString()} data breaches!
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Weak Password Warning */}
+            {strength && strength.score < 3 && !breachStatus.isBreached && (
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Consider using a stronger password
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
 
           <div className="space-y-2">

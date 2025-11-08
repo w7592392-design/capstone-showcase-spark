@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Credential } from '@/lib/storage';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Copy, Eye, EyeOff, ExternalLink, Pencil, Trash2 } from 'lucide-react';
+import { Copy, Eye, EyeOff, ExternalLink, Pencil, Trash2, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useVault } from '@/contexts/VaultContext';
 import { toast } from 'sonner';
+import { calculatePasswordStrength } from '@/lib/encryption';
+import { checkPasswordBreach, PasswordSecurityStatus } from '@/lib/passwordSecurity';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +29,17 @@ interface CredentialCardProps {
 export const CredentialCard = ({ credential, onEdit }: CredentialCardProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const { deleteCredential } = useVault();
+  const [breachStatus, setBreachStatus] = useState<PasswordSecurityStatus>({
+    breachCount: null,
+    isBreached: false,
+    isChecking: true,
+  });
+
+  const strength = calculatePasswordStrength(credential.password);
+
+  useEffect(() => {
+    checkPasswordBreach(credential.password).then(setBreachStatus);
+  }, [credential.password]);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -51,8 +65,37 @@ export const CredentialCard = ({ credential, onEdit }: CredentialCardProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Security Warnings */}
+        {breachStatus.isBreached && (
+          <Alert variant="destructive">
+            <ShieldAlert className="h-4 w-4" />
+            <AlertDescription>
+              This password has been found in {breachStatus.breachCount?.toLocaleString()} data breaches. 
+              Change it immediately!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {strength.score < 3 && !breachStatus.isBreached && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Password strength: <span className="font-semibold">{strength.label}</span>. 
+              Consider using a stronger password.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Password Section */}
-        <div className="flex items-center gap-2">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              Strength: <span className="font-medium" style={{ color: `hsl(var(--${strength.color}))` }}>
+                {strength.label}
+              </span>
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
           <div className="flex-1 min-w-0 px-3 py-2 bg-muted rounded-md font-mono text-sm truncate">
             {showPassword ? credential.password : '••••••••'}
           </div>
@@ -63,13 +106,14 @@ export const CredentialCard = ({ credential, onEdit }: CredentialCardProps) => {
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => copyToClipboard(credential.password, 'Password')}
-          >
-            <Copy className="w-4 h-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => copyToClipboard(credential.password, 'Password')}
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         {/* URL Section */}
