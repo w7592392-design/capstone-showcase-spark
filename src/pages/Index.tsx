@@ -1,19 +1,29 @@
 import { useEffect, useState } from 'react';
-import { getMasterPasswordHash } from '@/lib/storage';
-import { SetupMaster } from '@/components/Auth/SetupMaster';
+import { supabase } from '@/integrations/supabase/client';
+import { Auth } from './Auth';
 import { LoginScreen } from '@/components/Auth/LoginScreen';
 import { VaultDashboard } from '@/components/Vault/VaultDashboard';
 import { VaultProvider, useVault } from '@/contexts/VaultContext';
+import type { User } from '@supabase/supabase-js';
 
 const VaultApp = () => {
   const { isLocked, unlock } = useVault();
-  const [hasSetup, setHasSetup] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
-    const hash = getMasterPasswordHash();
-    setHasSetup(!!hash);
-    setIsChecking(false);
+    // Check initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setIsChecking(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (isChecking) {
@@ -24,8 +34,8 @@ const VaultApp = () => {
     );
   }
 
-  if (!hasSetup) {
-    return <SetupMaster onComplete={() => setHasSetup(true)} />;
+  if (!user) {
+    return <Auth />;
   }
 
   if (isLocked) {

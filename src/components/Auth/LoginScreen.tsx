@@ -1,13 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Shield, Eye, EyeOff, Lock } from 'lucide-react';
 import { verifyPassword } from '@/lib/encryption';
-import { getMasterPasswordHash } from '@/lib/storage';
 import { toast } from 'sonner';
-import { ForgotPasswordDialog } from './ForgotPasswordDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LoginScreenProps {
   onUnlock: (password: string) => void;
@@ -17,17 +16,35 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [showForgotDialog, setShowForgotDialog] = useState(false);
+  const [masterPasswordHash, setMasterPasswordHash] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string>('');
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('master_password_hash, email')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          setMasterPasswordHash(profile.master_password_hash);
+          setUserEmail(profile.email);
+        }
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    const storedHash = getMasterPasswordHash();
-
     setTimeout(() => {
-      if (storedHash && verifyPassword(password, storedHash)) {
-        toast.success('Welcome back!');
+      if (masterPasswordHash && verifyPassword(password, masterPasswordHash)) {
+        toast.success('Vault unlocked!');
         onUnlock(password);
       } else {
         toast.error('Incorrect master password');
@@ -44,9 +61,10 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
           <div className="mx-auto w-16 h-16 rounded-full vault-gradient flex items-center justify-center mb-2">
             <Shield className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-2xl font-bold">Secure Vault</CardTitle>
+          <CardTitle className="text-2xl font-bold">Unlock Your Vault</CardTitle>
           <CardDescription>
-            Enter your master password to unlock your vault
+            {userEmail && <span className="block mb-1">Signed in as: {userEmail}</span>}
+            Enter your master password to decrypt your vault
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,11 +99,14 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
 
             <Button 
               type="button" 
-              variant="link" 
-              className="w-full text-sm text-muted-foreground hover:text-foreground"
-              onClick={() => setShowForgotDialog(true)}
+              variant="outline" 
+              className="w-full"
+              onClick={async () => {
+                await supabase.auth.signOut();
+                toast.success('Signed out successfully');
+              }}
             >
-              Forgot your master password?
+              Sign Out
             </Button>
           </form>
 
@@ -96,12 +117,6 @@ export const LoginScreen = ({ onUnlock }: LoginScreenProps) => {
           </div>
         </CardContent>
       </Card>
-
-      <ForgotPasswordDialog
-        open={showForgotDialog}
-        onOpenChange={setShowForgotDialog}
-        onReset={() => window.location.reload()}
-      />
     </div>
   );
 };
